@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+    <!-- SweetAlert2 for beautiful popups -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2" style="background: #f87171;"></div>
+
+    <main class="glass-container admin-container" style="max-width: 900px;">
+        <header>
+            <h1>⚙️ Admin Dashboard</h1>
+            <p>Manage voting events, voters, and menus.</p>
+            <div style="margin-top: 1rem;">
+                <a href="/" class="back-link">← Back to Voting Page</a>
+            </div>
+        </header>
+
+        <section id="notificationArea" class="hidden"></section>
+
+        <!-- Creator Login Section -->
+        <section id="creatorSearchSection" class="admin-section">
+            <div class="admin-card">
+                <h2>👋 Welcome, Creator!</h2>
+                <p class="admin-desc">Please enter your Creator Name to view and manage your events.</p>
+                <form id="creatorSearchForm" class="add-user-form" style="display:flex; gap:0.5rem; margin-bottom:0;">
+                    <input type="text" id="creatorSearchInput" placeholder="Enter your Creator Name..." required
+                        style="flex-grow:1;">
+                    <button type="submit" class="primary-btn btn-small" style="background:var(--primary-color);">🔍
+                        Search & Load</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Events Dashboard (Hidden initially) -->
+        <section id="eventsDashboardSection" class="admin-section hidden">
+            <div class="admin-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+                    <h2>Events Dashboard</h2>
+                    <button id="logoutCreatorBtn" class="btn-delete"
+                        style="background:var(--text-muted); padding: 0.3rem 0.6rem; font-size:0.8rem;">Switch
+                        User</button>
+                </div>
+                <p class="admin-desc">Manage your existing voting events or create a new one.</p>
+
+                <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem;">Create New Event</h3>
+                <form id="createEventForm" class="add-user-form"
+                    style="margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.5rem; background: rgba(0,0,0,0.02); padding: 1rem; border-radius: 8px;">
+                    <div style="display:flex; gap: 0.5rem;">
+                        <input type="text" id="newEventTopic" placeholder="Event Topic (e.g. New Year 2026)" required
+                            style="flex-grow:1;">
+                        <button type="submit" class="primary-btn btn-small" style="white-space: nowrap;">+ Create
+                            Event</button>
+                    </div>
+                </form>
+
+                <div class="events-list-wrapper">
+                    <h3
+                        style="margin-bottom: 1rem; font-size: 1.1rem; border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 0.5rem;">
+                        Events for '<span id="loggedInCreatorNameDisplay"></span>'</h3>
+                    <ul id="eventsList" class="events-list">
+                        <!-- Event items injected here -->
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Event Editor (Hidden by default) -->
+        <section id="eventEditorSection" class="admin-section hidden">
+            <div class="admin-card" style="border: 2px solid var(--primary-color); position:relative;">
+                <div style="display:flex; justify-content: space-between; align-items:flex-start; margin-bottom: 1rem;">
+                    <h2>Editing: <span id="editorEventTopicTitle">Topic</span></h2>
+                    <button id="closeEditorBtn" class="btn-delete" style="background:var(--text-muted);">Close
+                        Editor</button>
+                </div>
+
+                <!-- URL Link -->
+                <div class="url-box"
+                    style="background: rgba(var(--primary-rgb), 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display:flex; align-items:center; gap:1rem;">
+                    <div style="flex-grow:1; overflow:hidden;">
+                        <div style="display:flex; gap:1rem; align-items: center; margin-bottom:0.25rem;">
+                            <span
+                                style="font-size:0.8rem; text-transform:uppercase; font-weight:bold; color:var(--primary-color);">Shareable
+                                Link:</span>
+                            <span id="eventStatusBadge"
+                                style="font-size:0.75rem; padding: 2px 6px; border-radius:4px; font-weight:bold; background:var(--success); color:white;">OPEN</span>
+                        </div>
+                        <code id="eventShareLink"
+                            style="word-break: break-all; color: var(--text-color);">http://...</code>
+                    </div>
+                    <button id="copyLinkBtn" class="primary-btn btn-small" style="white-space:nowrap;">📋 Copy</button>
+                    <button id="toggleStatusBtn" class="primary-btn btn-small"
+                        style="white-space:nowrap; background:var(--text-color);">Toggle Status</button>
+                </div>
+
+                <!-- Event Settings Tab Content -->
+                <div class="editor-tabs"
+                    style="display:flex; gap:1rem; margin-bottom:1.5rem; border-bottom: 2px solid rgba(0,0,0,0.1); padding-bottom:0.5rem;">
+                    <button class="editor-tab-btn active" data-target="#tab-general">General</button>
+                    <button class="editor-tab-btn" data-target="#tab-voters">Allowed Voters</button>
+                    <button class="editor-tab-btn" data-target="#tab-menu">Menu Config</button>
+                </div>
+
+                <!-- Tab: General Settings -->
+                <div id="tab-general" class="editor-tab-content">
+                    <form id="eventSettingsForm" class="settings-form">
+                        <div class="input-group">
+                            <label for="eventTopic">Event Topic (Required)</label>
+                            <input type="text" id="eventTopic" required>
+                        </div>
+                        <div class="input-row" style="display:flex; gap:1rem;">
+                            <div class="input-group" style="flex:1;">
+                                <label for="eventDate">Date (Optional)</label>
+                                <input type="date" id="eventDate">
+                            </div>
+                            <div class="input-group" style="flex:1;">
+                                <label for="eventTime">Time (Optional)</label>
+                                <input type="time" id="eventTime">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="eventLocation">Location (Optional)</label>
+                            <input type="text" id="eventLocation">
+                        </div>
+                        <button type="submit" class="primary-btn btn-small">Save General Settings</button>
+                    </form>
+                </div>
+
+                <!-- Tab: Voters -->
+                <div id="tab-voters" class="editor-tab-content hidden">
+                    <p class="admin-desc">Only people on this list can access the voting form for this specific event.
+                    </p>
+                    <form id="eventAddUserForm" class="add-user-form"
+                        style="margin-bottom:1rem; display:flex; gap:0.5rem;">
+                        <input type="text" id="eventNewUserName" placeholder="Enter allowed voter name" required
+                            style="flex-grow:1;">
+                        <button type="submit" class="primary-btn btn-small" style="background:var(--success);">+ Add
+                            Voter</button>
+                    </form>
+                    <div class="users-list-wrapper"
+                        style="max-height: 250px; overflow-y:auto; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 1rem; background:rgba(255,255,255,0.5);">
+                        <ul id="eventUsersList" class="users-list" style="margin:0;">
+                            <!-- Voter items injected here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Tab: Menu Configuration -->
+                <div id="tab-menu" class="editor-tab-content hidden">
+
+                    <!-- EXCEL UPLOAD -->
+                    <div style="background: rgba(0,0,0,0.02); padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+                        <h3 style="margin-bottom:0.5rem; font-size: 1.1rem;">Option 1: Excel Upload</h3>
+                        <p class="admin-desc" style="margin-bottom: 1rem;">Overwrites the entire menu layout using an
+                            Excel file.</p>
+                        <form id="uploadMenuForm" class="upload-form"
+                            style="display:flex; gap: 1rem; align-items: center; margin-bottom:1rem;">
+                            <input type="file" id="menuFile" accept=".xlsx" required
+                                style="flex-grow:1; border: 1px solid rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 8px; background: white;">
+                            <button type="submit" class="primary-btn btn-small">Upload Excel</button>
+                        </form>
+                        <a href="/api/template" download="template.xlsx"
+                            style="font-size: 0.9rem; font-weight: 500; color: var(--primary-color);">📥 Download .xlsx
+                            Template</a>
+                    </div>
+
+                    <!-- MANUAL BUILDER -->
+                    <div style="background: rgba(0,0,0,0.02); padding: 1rem; border-radius: 8px;">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h3 style="margin:0; font-size: 1.1rem;">Option 2: Manual Editor</h3>
+                            <button id="addManualCategoryBtn" class="primary-btn btn-small"
+                                style="background: var(--success);">+ Add Category</button>
+                        </div>
+                        <p class="admin-desc" style="margin-bottom:1rem;">Directly edit the menu on the web. Note: This
+                            currently edits "Sheet1" implicitly.</p>
+
+                        <div id="manualMenuBuilder" style="display:flex; flex-direction:column; gap: 1rem;">
+                            <!-- Manual UI injected here -->
+                        </div>
+
+                        <div style="margin-top: 1.5rem; text-align:right;">
+                            <button id="saveManualMenuBtn" class="primary-btn btn-small">Save Manual Menu
+                                Changes</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <hr style="margin: 2rem 0; border: none; border-top: 1px dashed rgba(0,0,0,0.1);">
+
+                <div style="display:flex; justify-content:flex-end;">
+                    <button id="deleteEventBtn" class="danger-btn btn-small">🗑️ Delete Event & Its Votes</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Global Settings -->
+        <section class="admin-section">
+            <div class="admin-card danger-zone">
+                <h2>Danger Zone</h2>
+                <button id="clearVotesBtn" class="danger-btn">🗑️ Factory Reset All Votes (All Events)</button>
+            </div>
+        </section>
+
+    </main>
+    <script src="admin.js"></script>
+</body>
+
+</html>

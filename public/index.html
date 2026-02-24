@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote Your Outing Menu!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Admin Link -->
+    <a href="/admin.html" class="admin-link">⚙️ Admin / Manage Event</a>
+
+    <!-- Fallback message if no eventId -->
+    <main id="missingEventContainer" class="glass-container hidden" style="text-align:center; padding: 4rem 2rem;">
+        <h1 style="color:var(--primary-color); margin-bottom: 1rem;">👋 Welcome to the Voting Portal</h1>
+        <p>Please use the specific voting link provided by your event administrator to access the menu.</p>
+    </main>
+
+    <main id="mainAppContainer" class="glass-container hidden">
+        <header>
+            <h1 id="eventTitleDisplay">🍽️ Loading Event...</h1>
+            <p id="eventMetaDisplay" class="event-meta hidden"></p>
+        </header>
+
+        <section id="notificationArea" class="hidden"></section>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button id="tab-vote" class="tab-btn active">Vote</button>
+            <button id="tab-results" class="tab-btn">View Results</button>
+        </nav>
+
+        <!-- Sheet Selection Tabs -->
+        <nav id="sheetTabs" class="sheet-tabs hidden">
+            <!-- Sheet buttons will be injected here -->
+        </nav>
+
+        <!-- Vote Form Area -->
+        <section id="view-vote" class="view-section active">
+            <div class="input-group">
+                <label for="voterName">Your Name</label>
+                <select id="voterName" required>
+                    <option value="" disabled selected>-- Please select your name --</option>
+                </select>
+            </div>
+
+            <div id="loading" class="loading-spinner"></div>
+
+            <form id="voteForm" class="hidden">
+                <div id="menuContainer">
+                    <!-- Menu categories will be injected here -->
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="primary-btn">Submit Vote</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Results Area -->
+        <section id="view-results" class="view-section hidden">
+            <div id="resultsContent">
+                <p>Loading results...</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
