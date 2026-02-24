@@ -449,10 +449,22 @@ app.delete('/api/events/:eventId/voters/:name', (req, res) => {
     res.json({ success: true, voters: event.allowedVoters });
 });
 
-// Clear ALL votes across ALL events
-app.delete('/api/votes', (req, res) => {
-    saveVotes({});
-    res.json({ success: true, message: 'All votes across all events cleared successfully.' });
+// Clear ALL votes for a specific event
+app.delete('/api/events/:eventId/votes', (req, res) => {
+    try {
+        const eventId = req.params.eventId;
+        const allVotes = getVotes();
+
+        if (allVotes[eventId]) {
+            delete allVotes[eventId];
+            saveVotes(allVotes);
+        }
+
+        res.json({ success: true, message: 'All votes for this event have been cleared.' });
+    } catch (err) {
+        console.error('Error clearing event votes:', err);
+        res.status(500).json({ error: 'Internal server error while clearing votes.' });
+    }
 });
 
 app.listen(port, () => {

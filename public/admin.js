@@ -792,26 +792,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    clearVotesBtn.addEventListener('click', async () => {
+    clearEventVotesBtn.addEventListener('click', async () => {
+        if (!currentEventId) return;
+
         const result = await Swal.fire({
             title: 'Are you sure?',
-            text: "คุณแน่ใจหรือไม่ที่จะล้างคะแนนโหวตทั้งหมดสำหรับ 'ทุกงานโหวต'? (การกระทำนี้จะลบคะแนนทั้งหมดและไม่สามารถกู้คืนได้)",
+            text: "คุณแน่ใจหรือไม่ที่จะล้างคะแนนโหวตทั้งหมดสำหรับ 'งานโหวตนี้' เท่านั้น? (การกระทำนี้ไม่สามารถกู้คืนได้)",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Yes, clear all votes!'
+            confirmButtonText: 'Yes, clear votes for this event!'
         });
 
         if (!result.isConfirmed) return;
 
         try {
-            const res = await fetch(`${API_BASE}/votes`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE}/events/${currentEventId}/votes`, { method: 'DELETE' });
             if (res.ok) {
-                showNotification('ALL votes wiped successfully!', 'success');
+                showNotification('Votes for this event cleared successfully!', 'success');
                 Swal.fire({
                     title: 'Cleared!',
-                    text: 'ดำเนินการล้างคะแนนโหวตสำหรับทุกงานเรียบร้อยแล้ว!',
+                    text: 'ดำเนินการล้างคะแนนโหวตสำหรับงานนี้เรียบร้อยแล้ว!',
                     icon: 'success',
                     confirmButtonColor: '#4f46e5'
                 });
