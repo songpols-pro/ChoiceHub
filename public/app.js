@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
             eventTitleDisplay.textContent = eventData.topic || '🍽️ Menu Voting';
 
             let metaParts = [];
-            if (eventData.creatorName) metaParts.push(`👤 By: ${eventData.creatorName}`);
+            // if (eventData.creatorName) metaParts.push(`👤 By: ${eventData.creatorName}`); // Removed per request
             if (eventData.date) metaParts.push(`📅 ${eventData.date}`);
             if (eventData.time) metaParts.push(`🕒 ${eventData.time}`);
             if (eventData.location) metaParts.push(`📍 ${eventData.location}`);
@@ -94,11 +94,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Check Status
             if (eventData.status === 'closed') {
+                sheetNames = Object.keys(menuData);
+
+                let winListHTML = '';
+
+                // Fetch results for all sheets to show final winners
+                for (const sheet of sheetNames) {
+                    try {
+                        const res = await fetch(`${API_BASE}/results/${currentEventId}?sheet=${encodeURIComponent(sheet)}`);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        const sheetCategories = menuData[sheet] || [];
+
+                        winListHTML += `<h3 style="margin-top: 1.5rem; text-align: left; color: var(--primary-color); border-bottom: 2px solid rgba(79, 70, 229, 0.2); padding-bottom: 0.5rem;">📊 ${sheet} Finalists</h3>`;
+
+                        sheetCategories.forEach(catObj => {
+                            const quota = catObj.quota || 1;
+                            const sortedItems = [...catObj.items].sort((a, b) => {
+                                const countA = data.tally[a] || 0;
+                                const countB = data.tally[b] || 0;
+                                return countB - countA;
+                            });
+
+                            let winnerThreshold = 0;
+                            if (sortedItems.length > 0) {
+                                const voteCounts = sortedItems.map(item => data.tally[item] || 0);
+                                const thresholdIndex = Math.min(quota - 1, voteCounts.length - 1);
+                                winnerThreshold = voteCounts[thresholdIndex];
+                            }
+
+                            const winners = sortedItems.filter(item => {
+                                const count = data.tally[item] || 0;
+                                return count > 0 && count >= winnerThreshold;
+                            });
+
+                            winListHTML += `
+                                <div style="text-align: left; margin-top: 1rem; background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05);">
+                                    <h4 style="margin-bottom: 0.5rem;">${catObj.category}</h4>
+                                    <ul style="list-style: none; padding-left: 0;">
+                                        ${winners.length > 0
+                                    ? winners.map(w => `<li style="font-weight: 500; font-size: 1.1rem; color: #b45309;">👑 ${w} <span style="font-size:0.8rem; color: var(--text-muted);">(${data.tally[w]} votes)</span></li>`).join('')
+                                    : '<li style="color:var(--text-muted); font-style: italic;">No votes cast</li>'}
+                                    </ul>
+                                </div>
+                            `;
+                        });
+
+                    } catch (err) {
+                        console.error('Error fetching closed results', err);
+                    }
+                }
+
                 viewVote.innerHTML = `
-                    <div style="text-align:center; padding: 3rem 1rem;">
+                    <div style="text-align:center; padding: 2rem 1rem;">
                         <span style="font-size:3rem;">🛑</span>
                         <h2 style="color:var(--danger); margin: 1rem 0;">Voting is Closed</h2>
-                        <p>The creator of this event has locked voting submissions. You can still view results.</p>
+                        <p style="margin-bottom: 2rem;">The creator of this event has locked voting submissions. Here is the final summary:</p>
+                        ${winListHTML}
                     </div>`;
                 loadingSpinner.classList.add('hidden');
                 return; // Stop rendering menu form
@@ -175,6 +227,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             fetchResultsForSheet(sheet);
         }
+
+        // Auto-scroll to top AFTER the DOM has updated and SweetAlert completes closing animation
+        setTimeout(() => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        }, 400);
     }
 
     // --- Vote Pre-filling Logic --- //
@@ -403,10 +460,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         title: 'Success!',
                         text: `ส่งผลโหวตสำหรับ ${currentSheet} เรียบร้อย ไปยังหน้าถัดไป...`,
                         icon: 'success',
-                        timer: 1500,
+                        timer: 1000,
                         showConfirmButton: false
                     }).then(() => {
-                        const nextBtn = Array.from(document.querySelectorAll('.sheet-btn')).find(b => b.textContent === nextSheet);
+                        const nextBtn = Array.from(document.querySelectorAll('.sheet-btn')).find(b => b.textContent.trim() === nextSheet.trim());
                         if (nextBtn) {
                             switchSheet(nextSheet, nextBtn);
                         }
@@ -454,7 +511,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let resultCharts = [];
+
     function renderResults(sheet, data) {
+        // Destroy existing charts
+        resultCharts.forEach(chart => chart.destroy());
+        resultCharts = [];
+
         if (!data.votesList || data.votesList.length === 0) {
             resultsContent.innerHTML = '<p style="text-align:center; padding: 2rem;">No votes have been cast for this sheet yet. Be the first!</p>';
             return;
@@ -464,23 +527,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const sheetCategories = menuData[sheet] || [];
 
-        sheetCategories.forEach(catObj => {
+        // Build HTML first
+        sheetCategories.forEach((catObj, index) => {
             let catHTML = `<div class="result-category"><h3>${catObj.category}</h3>`;
+
+            // Canvas for Pie Chart
+            const chartId = `chart-${index}`;
+            catHTML += `<div style="max-width: 250px; margin: 0 auto 1.5rem auto;"><canvas id="${chartId}"></canvas></div>`;
 
             const sortedItems = [...catObj.items].sort((a, b) => {
                 const countA = data.tally[a] || 0;
                 const countB = data.tally[b] || 0;
-                return countB - countA;
+                return countB - countA; // Highest votes first
             });
+
+            // Determine the limit/quota for this category (default to 1 if not specified)
+            const quota = catObj.quota || 1;
+
+            // Find the cutoff vote count to determine winners, accounting for ties
+            let winnerThreshold = 0;
+            let tiedAtThresholdCount = 0;
+            let winnersAboveThresholdCount = 0;
+
+            if (sortedItems.length > 0) {
+                const voteCounts = sortedItems.map(item => data.tally[item] || 0);
+                const thresholdIndex = Math.min(quota - 1, voteCounts.length - 1);
+                winnerThreshold = voteCounts[thresholdIndex];
+
+                // Count how many items are at the exact threshold, and how many are strictly above it
+                voteCounts.forEach(count => {
+                    if (count === winnerThreshold && count > 0) tiedAtThresholdCount++;
+                    if (count > winnerThreshold) winnersAboveThresholdCount++;
+                });
+            }
+
+            // If the total number of items at or above the threshold exceeds the quota, 
+            // the items AT the threshold are considered "tied" and need manual resolution.
+            const hasUnresolvedTie = (winnersAboveThresholdCount + tiedAtThresholdCount) > quota;
 
             sortedItems.forEach(item => {
                 const count = data.tally[item] || 0;
                 const voters = data.votersByItem[item] || [];
 
+                let highlightClass = '';
+                let prefixIcon = '';
+
+                if (count > 0 && count >= winnerThreshold) {
+                    if (count === winnerThreshold && hasUnresolvedTie) {
+                        // This item is part of a tie that exceeds the quota
+                        highlightClass = 'tie-highlight';
+                        prefixIcon = '⚔️ '; // Sword emoji for tie-breaker needed
+                    } else {
+                        // Outright winner (either above threshold, or at threshold but fits in quota)
+                        highlightClass = 'winner-highlight';
+                        prefixIcon = '👑 ';
+                    }
+                }
+
                 catHTML += `
-                    <div class="result-item" style="${count === 0 ? 'opacity:0.6;' : ''}">
+                    <div class="result-item ${highlightClass}" style="${count === 0 ? 'opacity:0.6;' : ''}">
                         <div class="result-info">
-                            <h4>${item}</h4>
+                            <h4>${prefixIcon}${item}</h4>
                             <div class="voter-list">
                                 ${count > 0 ? voters.join(', ') : 'No votes yet'}
                             </div>
@@ -496,6 +603,66 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         resultsContent.innerHTML = html;
+
+        // Initialize Charts after DOM is ready
+        sheetCategories.forEach((catObj, index) => {
+            const chartId = `chart-${index}`;
+            const ctx = document.getElementById(chartId);
+            if (!ctx) return;
+
+            const sortedItems = [...catObj.items].sort((a, b) => {
+                const countA = data.tally[a] || 0;
+                const countB = data.tally[b] || 0;
+                return countB - countA;
+            });
+
+            const labels = [];
+            const chartData = [];
+
+            // Modern pastel/vibrant colors
+            const backgroundColors = [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                '#FF9F40', '#E7E9ED', '#71B37C', '#EC932F', '#7171C6'
+            ];
+
+            sortedItems.forEach(item => {
+                const count = data.tally[item] || 0;
+                if (count > 0) {
+                    labels.push(item);
+                    chartData.push(count);
+                }
+            });
+
+            if (chartData.length > 0) {
+                const newChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: chartData,
+                            backgroundColor: backgroundColors.slice(0, labels.length),
+                            borderWidth: 1,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    font: { family: "'Inter', sans-serif", size: 12 }
+                                }
+                            }
+                        }
+                    }
+                });
+                resultCharts.push(newChart);
+            } else {
+                // If no votes, conceal the canvas container
+                ctx.parentElement.style.display = 'none';
+            }
+        });
     }
 
     // Init

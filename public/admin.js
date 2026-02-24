@@ -267,10 +267,12 @@ document.addEventListener('DOMContentLoaded', () => {
             eventStatusBadge.textContent = 'OPEN';
             eventStatusBadge.style.background = 'var(--success)';
             toggleStatusBtn.textContent = 'Lock & Close Voting';
+            toggleStatusBtn.style.background = 'var(--error)'; // Warning red
         } else {
             eventStatusBadge.textContent = 'CLOSED';
-            eventStatusBadge.style.background = 'var(--danger)';
+            eventStatusBadge.style.background = 'var(--error)';
             toggleStatusBtn.textContent = 'Re-Open Voting';
+            toggleStatusBtn.style.background = 'var(--success)'; // Green to reopen
         }
     }
 
